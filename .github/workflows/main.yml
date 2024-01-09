@@ -9,6 +9,7 @@ on:
   pull_request:
     branches:
       - main
+  workflow_dispatch:
 
 jobs:
   terraform:
@@ -56,16 +57,31 @@ jobs:
           sleep 10
           awslocal apigatewayv2 get-apis
           awslocal cognito-idp list-user-pools --max-results 1
-      - name: Seed test environment with Cloud Pod
+
+      - name: Send a Slack notification
+        if: failure() || github.event_name != 'pull_request'
+        uses: ravsamhq/notify-slack-action@v2
+        with:
+          status: ${{ job.status }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          notification_title: "{workflow} has {status_message}"
+          message_format: "{emoji} *{workflow}* {status_message} in <{repo_url}|{repo}>"
+          footer: "Linked Repo <{repo_url}|{repo}> | <{run_url}|View Workflow run>"
+          notify_when: "failure"
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+      - name: Generate a Diagnostic Report
+        if: failure()
         run: |
-          localstack pod load https://raw.githubusercontent.com/giograno/serverless-api-ecs-apigateway-sample/main/cloud-pods-seed-tests/bootstrap
-          sleep 10
-      - name: Run tests
-        run: |
-          cd tests
-          pip install pytest
-          pip install boto3
-          pytest .
+          curl -s localhost:4566/_localstack/diagnose | gzip -cf > diagnose.json.gz
+
+      - name: Upload the Diagnostic Report
+        if: failure()
+        uses: actions/upload-artifact@v3
+        with:
+          name: diagnose.json.gz
+          path: ./diagnose.json.gz
 
   cloudformation:
     name: Deploy infrastructure using CloudFormation
@@ -109,13 +125,28 @@ jobs:
           sleep 10
           awslocal apigatewayv2 get-apis
           awslocal cognito-idp list-user-pools --max-results 1
-      - name: Seed test environment with Cloud Pod
+
+      - name: Send a Slack notification
+        if: failure() || github.event_name != 'pull_request'
+        uses: ravsamhq/notify-slack-action@v2
+        with:
+          status: ${{ job.status }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          notification_title: "{workflow} has {status_message}"
+          message_format: "{emoji} *{workflow}* {status_message} in <{repo_url}|{repo}>"
+          footer: "Linked Repo <{repo_url}|{repo}> | <{run_url}|View Workflow run>"
+          notify_when: "failure"
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+      - name: Generate a Diagnostic Report
+        if: failure()
         run: |
-          localstack pod load https://raw.githubusercontent.com/giograno/serverless-api-ecs-apigateway-sample/main/cloud-pods-seed-tests/bootstrap
-          sleep 10
-      - name: Run tests
-        run: |
-          cd tests
-          pip install pytest
-          pip install boto3
-          pytest .
+          curl -s localhost:4566/_localstack/diagnose | gzip -cf > diagnose.json.gz
+
+      - name: Upload the Diagnostic Report
+        if: failure()
+        uses: actions/upload-artifact@v3
+        with:
+          name: diagnose.json.gz
+          path: ./diagnose.json.gz
