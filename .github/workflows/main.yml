@@ -48,7 +48,7 @@ jobs:
 
       - name: Deploy on Terraform
         run: |
-          cd terraform
+          cd 02-serverless-api-ecs-apigateway/terraform
           tflocal init
           tflocal apply --auto-approve
 
@@ -113,9 +113,9 @@ jobs:
 
           echo "Startup complete"
 
-      - name: Deploy on Terraform
+      - name: Deploy using Cloudformation
         run: |
-          cd cloudformation
+          cd 02-serverless-api-ecs-apigateway/cloudformation
           STACK="stack1"
           CF_FILE="ecsapi-demo-cloudformation.yaml"
           awslocal cloudformation create-stack --stack-name $STACK --template-body file://$CF_FILE
